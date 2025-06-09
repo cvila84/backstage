@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:bookworm-slim
 
 ARG NODE_VERSION=22.16.0
 RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
@@ -13,7 +13,16 @@ RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     esac \
     && set -ex \
     # libatomic1 for arm
-    && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends \
+    && apt-get update -qq \
+    && apt-get install -qq --no-install-recommends -y \
+      ca-certificates \
+      curl \
+      wget \
+      gnupg \
+      dirmngr \
+      xz-utils \
+      libatomic1 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     # use pre-existing gpg directory, see https://github.com/nodejs/docker-node/pull/1895#issuecomment-1550389150
     && export GNUPGHOME="$(mktemp -d)" \
@@ -50,6 +59,7 @@ RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
       | sort -u \
       | xargs -r apt-mark manual \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
     # smoke tests
     && node --version \
     && npm --version \
@@ -57,6 +67,16 @@ RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 ENV YARN_VERSION=1.22.22
 RUN set -ex \
+  && savedAptMark="$(apt-mark showmanual)" \
+  && apt-get update -qq \
+  && apt-get install -qq --no-install-recommends -y \
+    ca-certificates \
+    curl \
+    wget \
+    gnupg \
+    dirmngr \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* \
   # use pre-existing gpg directory, see https://github.com/nodejs/docker-node/pull/1895#issuecomment-1550389150
   && export GNUPGHOME="$(mktemp -d)" \
   && for key in \
@@ -75,12 +95,24 @@ RUN set -ex \
   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn \
   && ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg \
   && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz \
+  && apt-mark auto '.*' > /dev/null \
+  && { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; } \
+  && find /usr/local -type f -executable -exec ldd '{}' ';' \
+    | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }' \
+    | sort -u \
+    | xargs -r dpkg-query --search \
+    | cut -d: -f1 \
+    | sort -u \
+    | xargs -r apt-mark manual \
+  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
   # smoke test
   && yarn --version \
   && rm -rf /tmp/*
 
 ARG BUN_VERSION=latest
-RUN apt-get update -qq \
+RUN set -ex \
+    && savedAptMark="$(apt-mark showmanual)" \
+    && apt-get update -qq \
     && apt-get install -qq --no-install-recommends \
       ca-certificates \
       curl \
@@ -129,10 +161,38 @@ RUN apt-get update -qq \
     && unzip "bun-linux-$build.zip" \
     && mv "bun-linux-$build/bun" /usr/local/bin/bun \
     && rm -f "bun-linux-$build.zip" SHASUMS256.txt.asc SHASUMS256.txt \
-    && chmod +x /usr/local/bin/bun
+    && chmod +x /usr/local/bin/bun \
+    && ln -s /usr/local/bin/bun /usr/local/bin/bunx \
+    && mkdir -p /usr/local/bun-node-fallback-bin \
+    && ln -s /usr/local/bin/bun /usr/local/bun-node-fallback-bin/node \
+    && apt-mark auto '.*' > /dev/null \
+    && { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark > /dev/null; } \
+    && find /usr/local -type f -executable -exec ldd '{}' ';' \
+      | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }' \
+      | sort -u \
+      | xargs -r dpkg-query --search \
+      | cut -d: -f1 \
+      | sort -u \
+      | xargs -r apt-mark manual \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    # smoke test
+    && bun --version \
+    && rm -rf /tmp/*
+
+RUN apt-get update -qq \
+    && apt-get install -qq --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    nano \
+    vim-tiny \
+    && apt-get auto-remove -y \
+    && apt-get clean -y \
+    && groupadd bun --gid 1000 \
+    && useradd bun --uid 1000 --gid bun --shell $(which bash) --create-home \
+    && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
 
 COPY docker-entrypoint.sh /usr/local/bin
-RUN mkdir -p /usr/local/bun-node-fallback-bin && ln -s /usr/local/bin/bun /usr/local/bun-node-fallback-bin/node
 ENV PATH="${PATH}:/usr/local/bun-node-fallback-bin"
 
 # Disable the runtime transpiler cache by default inside Docker containers.
@@ -144,30 +204,8 @@ ENV BUN_RUNTIME_TRANSPILER_CACHE_PATH=${BUN_RUNTIME_TRANSPILER_CACHE_PATH}
 ARG BUN_INSTALL_BIN=/usr/local/bin
 ENV BUN_INSTALL_BIN=${BUN_INSTALL_BIN}
 
-RUN groupadd bun \
-      --gid 1000 \
-    && useradd bun \
-      --uid 1000 \
-      --gid bun \
-      --shell /bin/sh \
-      --create-home \
-    && ln -s /usr/local/bin/bun /usr/local/bin/bunx \
-    && which bun \
-    && which bunx \
-    && bun --version
-
-RUN apt-get update \
-    && apt-get -y install --no-install-recommends \
-    ca-certificates \
-    git \
-    nano \
-    vim-tiny \
-    && apt-get auto-remove -y \
-    && apt-get clean -y \
-    && chsh -s $(which bash) bun \
-    && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
-
 USER bun
 WORKDIR /home/bun
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/usr/local/bin/bun"]
+
