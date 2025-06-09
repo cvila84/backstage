@@ -146,18 +146,18 @@ RUN apt-get update -qq \
     curl \
     git \
     nano \
+    python3 \
     sudo \
     vim-tiny \
     && apt-get auto-remove -y \
     && apt-get clean -y \
-    && groupadd bun --gid 1000 \
-    && useradd bun --uid 1000 --gid bun --shell $(which bash) --create-home \
-    && usermod -aG sudo bun \
-    && echo "bun ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/bun \
-    && chmod 0440 /etc/sudoers.d/bun \
+    && groupadd debian --gid 1000 \
+    && useradd debian --uid 1000 --gid debian --shell $(which bash) --create-home \
+    && usermod -aG sudo debian \
+    && echo "debian ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/debian \
+    && chmod 0440 /etc/sudoers.d/debian \
     && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
 
-COPY docker-entrypoint.sh /usr/local/bin
 ENV PATH="${PATH}:/usr/local/bun-node-fallback-bin"
 
 # Disable the runtime transpiler cache by default inside Docker containers.
@@ -169,8 +169,8 @@ ENV BUN_RUNTIME_TRANSPILER_CACHE_PATH=${BUN_RUNTIME_TRANSPILER_CACHE_PATH}
 ARG BUN_INSTALL_BIN=/usr/local/bin
 ENV BUN_INSTALL_BIN=${BUN_INSTALL_BIN}
 
-USER bun
-WORKDIR /home/bun
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["/usr/local/bin/bun"]
+USER debian
+WORKDIR /home/debian
+ENTRYPOINT ["/bin/bash"]
+CMD ["-c", "sleep infinity"]
 
