@@ -141,6 +141,7 @@ RUN set -ex \
 
 RUN apt-get update -qq \
     && apt-get install -qq --no-install-recommends \
+    build-essential \
     ca-certificates \
     curl \
     git \
