@@ -151,6 +151,7 @@ RUN apt-get update -qq \
     vim-tiny \
     && apt-get auto-remove -y \
     && apt-get clean -y \
+    && sed -i 's/::1 localhost ip6-localhost ip6-loopback/::1 ip6-localhost ip6-loopback/' /etc/hosts \
     && groupadd debian --gid 1000 \
     && useradd debian --uid 1000 --gid debian --shell $(which bash) --create-home \
     && usermod -aG sudo debian \
