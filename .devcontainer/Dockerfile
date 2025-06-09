@@ -156,7 +156,7 @@ RUN apt-get update -qq \
     && usermod -aG sudo debian \
     && echo "debian ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/debian \
     && chmod 0440 /etc/sudoers.d/debian \
-    && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
+    && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/debian/.bashrc
 
 ENV PATH="${PATH}:/usr/local/bun-node-fallback-bin"
 
