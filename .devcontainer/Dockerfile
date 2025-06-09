@@ -151,6 +151,7 @@ RUN apt-get update -qq \
     && apt-get clean -y \
     && groupadd bun --gid 1000 \
     && useradd bun --uid 1000 --gid bun --shell $(which bash) --create-home \
+    && usermod -aG sudo bun
     && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
 
 COPY docker-entrypoint.sh /usr/local/bin
