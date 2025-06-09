@@ -154,7 +154,7 @@ RUN apt-get update -qq \
     && useradd bun --uid 1000 --gid bun --shell $(which bash) --create-home \
     && usermod -aG sudo bun \
     && echo "bun ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/bun \
-    && chmod 0440 /etc/sudoers.d/bun
+    && chmod 0440 /etc/sudoers.d/bun \
     && echo 'export PS1="\e[01;32m\u\e[m:\e[01;34m\w\e[m\$ "' >> /home/bun/.bashrc
 
 COPY docker-entrypoint.sh /usr/local/bin
