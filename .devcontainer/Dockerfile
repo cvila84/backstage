@@ -146,6 +146,7 @@ RUN apt-get update -qq \
     curl \
     git \
     nano \
+    sudo \
     vim-tiny \
     && apt-get auto-remove -y \
     && apt-get clean -y \
